@@ -5,8 +5,8 @@ close all
 NoPts = 870;
 sz = 0;
 XYrange = 0.05;
-R = 0.02;
-W20range = 0:1:2;
+R = 0.03;
+W20range = 1%0:0.3:1;
 
 % array to store all the images
 finalimg = 0;

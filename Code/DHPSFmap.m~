@@ -64,16 +64,7 @@ for index = indices
     % pup = exp(1i.*angle(U)).*(p<=1).*(exp(1i.*2.*pi.*W20.*p.^2));
     psf = fftshift(fft2(pup)).*conj(fftshift(fft2(pup)));
     psf = psf ./ sum(psf(:));
-    
-    %------------------------------------------------------------%
-    % Store the angle between the pair corresponding to each defocus
-    % value. Also store the midpoint between them, which corresponds to
-    % the localised 2D position of the particle.
-    %------------------------------------------------------------%
-    PSFs(:, :, index) = psf;
-    
-    psf = abs(fftshift(ifft2(fftshift(fft2(psf)) .* fftshift(fft2(canvas)))));
-    
+
     % Segment the region around the center that contains the peaks
     c = size(psf) ./ 2;  L = 25;
     box = psf(round(c(2))-L:round(c(2))+L,...
@@ -156,7 +147,17 @@ for index = indices
     midpt = [coords1(1) + coords2(1), coords1(2) + coords2(2)] ./ 2;
     midpoints = [midpoints; midpt];
 
-
+    %------------------------------------------------------------%
+    % Store the angle between the pair corresponding to each defocus
+    % value. Also store the midpoint between them, which corresponds to
+    % the localised 2D position of the particle.
+    %------------------------------------------------------------%
+    PSFs(:, :, index) = psf;
+    
+    %------------------------------------------------------------%
+    % Measure the shift in the X, Y coordinates.
+    %------------------------------------------------------------%
+    imgDH = abs(fftshift(ifft2(fftshift(fft2(blurpsfDH)) .* fftshift(fft2(canvas)))));
     
 end
 
@@ -189,10 +190,7 @@ save('./DHPSFdata/shiftY.mat', 'shiftY');
 figure; plot(angle2defocus, angles, 'r')
         hold on
         plot(W20range, angles, '*')
-
-figure; plot(W20range, correction(:, 1), '*')
-
-figure; plot(W20range, correction(:, 2), '*')
+        
 end
 
 

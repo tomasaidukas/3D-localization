@@ -1,5 +1,4 @@
-function [imgavg, depthavg] = CKM(img, img180, original, W20, NoPts, XYrange,...
-                                  R, sigmaRange, NOISE)
+function [imgavg, depthavg] = CKM(img, img180, camera, sigmaRange, NOISE)
 %------------------------------------------------------------%
 % Performs CKM reconstruction technique on two images of the same scene,
 % but different defocus values. It needs to be supplied with the image
@@ -7,16 +6,12 @@ function [imgavg, depthavg] = CKM(img, img180, original, W20, NoPts, XYrange,...
 % phase correlation and distance between the points
 %------------------------------------------------------------%
 
-% Median filter the images
-% img = double(medfilt2(img, [3,3]));
-% img180 = double(medfilt2(img180, [3,3]));
-
-
 %------------------------------------------------------------%
 % Generate a range of PSF with different defocus values
 %------------------------------------------------------------%
+[W20, maxDefocus, NoPts, XYrange, R, f] = camera{:};
 [psf, psf180] = CPMpsf(XYrange, NoPts, R, 0);
-maxDefocus = size(W20, 1);
+maxDefocus = size(W20, 2);
 maxSigma = size(sigmaRange, 2);
 
 defocusmap = zeros(NoPts, NoPts, maxSigma);
@@ -24,7 +19,6 @@ stackofPSF = zeros(NoPts, NoPts, maxDefocus);
 stackofPSF180 = zeros(NoPts, NoPts, maxDefocus);
 
 for i = 1:maxDefocus
-    
     % NOTE THAT i=1 is the defocus strength at 0!
     [psf, psf180] = CPMpsf(XYrange, NoPts, R, W20(i));
 
@@ -63,7 +57,7 @@ for sigma = 1 : maxSigma
 
     for i = 1:maxDefocus
         subtr = restImg(:, :, i) - restImg180(:, :, i);
-        squared = abs(subtr);
+        squared = abs(subtr) .^ 2;
         differ = double(imfilter(squared, gaussfilt, 'conv'));
         filtdif(:, :, i) = differ;
     end
@@ -96,7 +90,7 @@ for sigma = 1 : maxSigma
             defocusmap(i, j, sigma) = bestW;
         end
     end
-
+    
     %------------------------------------------------------------%
     % Perform a spatially varying deconvolution.
     %------------------------------------------------------------%
@@ -127,5 +121,6 @@ for i = 1:maxSigma
     depthavg = depthavg + defocusmap(:,:,i);
 end
 depthavg = round(depthavg ./ (maxSigma));
+
 
 end

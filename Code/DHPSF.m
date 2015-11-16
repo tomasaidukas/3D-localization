@@ -32,8 +32,8 @@ for i = 1 : size(PSFs, 3)
     FTimg = fftshift(fft2(imgF));
     
     % Power spectrum
-    CC = double(FTimg .* conj(FTpsf) .* H);
-    AC = double(conj(FTimg) .* (FTimg) .* H);
+    CC = double(FTimg .* conj(FTpsf));% .* H);
+    AC = double(conj(FTimg) .* (FTimg));% .* H);
 
     % Cross-Correlation
     cc = abs(ifftshift(ifft2(CC)));
@@ -42,7 +42,7 @@ for i = 1 : size(PSFs, 3)
 end
 
 % Threshold the image
-thresh = multithresh(corrstack);
+thresh = multithresh(corrstack) / 1.5;
 binary = (imquantize(corrstack, thresh) - 1);
 
 % Use morphological operations to obtain connected regions, which
@@ -99,7 +99,9 @@ for i = 1 : num
     % centroid positions. Fit the Gaussian.
     %------------------------------------------------------------%
 
-    [n, m] = size(box); [X, Y] = meshgrid(1:n);
+    [n, m] = size(box); [X, Y] = meshgrid(1:(1/5):n);
+    [XC, YC] = meshgrid(1:m);
+    box = interp2(XC, YC, box, X, Y);
     options = optimset('TolX', 1e-20);
     [n, m] = size(box); 
     
@@ -139,7 +141,10 @@ for i = 1 : num
     % the angle they make with the horizontal axis to determine the
     % depth. The midpoint will be the localized co-ordinate in 2D.
     %------------------------------------------------------------%
-    ang = atand((params(2) - params(6)) / (params(3) - params(7)))
+%     ang = atand((params(2) - params(6)) / (params(3) - params(7)))
+    par1 = (params(2) - params(6)), par2 = (params(3) - params(7));
+
+    ang = atand(par2 / par1);
     midpt = [coords1(1) + coords2(1), coords1(2) + coords2(2)] ./ 2;
 
     %------------------------------------------------------------%
@@ -159,6 +164,6 @@ for i = 1 : num
     img2D(round(midpt(2)), round(midpt(1))) = 1;
     plotX = [plotX, midpt(1)]; plotY = [plotY, midpt(2)];
 end
-DHPSFmap
+
 end
 
