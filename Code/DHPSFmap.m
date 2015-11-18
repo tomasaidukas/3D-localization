@@ -6,38 +6,12 @@ function [PSFs, angles, W20fit] = DHPSFmap(camera)
 
 [W20range, maxDefocus, NoPts, XYrange, R, f] = camera{:};
 canvas = zeros(NoPts, NoPts);
-canvas(NoPts / 2, NoPts / 2) = 1;
-
-n = 1; %NB: effective 'n' of mode is: (n - abs(m))/2
-m = 1;
-Z = 0;
-lambda = 550*10^(-9); %wavelength
-Wo = 4.18*10^(-3); %beam waist
+canvas(NoPts / 2, NoPts / 2) = 1; samp = 1;
 store1 = []; store2 = [];
 
 [x,y] = meshgrid(linspace(-XYrange,XYrange,NoPts),linspace(-XYrange,XYrange,NoPts));
-[PHI,RHO]=cart2pol(x,y);
-% 
-%     Zo = pi*(Wo^2)/lambda; %Ryleigh distance
-%     Zh = Z/Zo;
-%     Wzh = Wo.*sqrt(1.+Zh.^2);
-%     PSIzh = atan(Zh);
-%     RHOh = RHO./Wzh;
-%     G_rhoh_zh = (Wo./Wzh).*exp(-(RHOh.^2)).*exp(1i.*(RHOh.^2).*Zh).*exp(-1i.*PSIzh);
-% 
-%     U = zeros(NoPts,NoPts);
-% 
-%     for u = 1:4
-%         Rnm_rhoh = ((sqrt(2).*RHOh).^abs(m)).*Ln_k((n-abs(m))/2,abs(m),2.*RHOh.^2);%Ln_m((n-abs(m))/2,abs(m),2.*RHOh.^2);
-%         PHIm_phi = exp(1i.*m.*PHI);
-%         Zn_zh = exp(-1i.*n.*PSIzh);
-%         Unm = ((G_rhoh_zh.*Rnm_rhoh).*PHIm_phi).*Zn_zh; %GL mode n,m
-%         Unm = Unm ./ max(abs(Unm(:)));
-%         U = U + Unm;
-%         n = n+4;
-%         m = m+2;
-%     end
-% 
+[tet,p]=cart2pol(double(x),double(y));
+
 %------------------------------------------------------------%
 % Load the experimental SLM representing the phase mask.
 %------------------------------------------------------------%
@@ -56,12 +30,19 @@ midpoints = [];
 for index = indices
 
     W20 = W20range(index);
+    % Aperture containing ones and zeros
+    apt = double(p <= R);
+    % pupil must be normalized from 1 to 0
+    p = apt .* p;
+    p = p ./ max(p(:));
 
-    % Get the PSF from the measured SLM stored in U
-    [tet,p]=cart2pol(x,y);
-    p = p./R;
-    pup = U .* (p<=1) .* exp(1i .* 2 .* pi .* W20 .* p.^2);
-    % pup = exp(1i.*angle(U)).*(p<=1).*(exp(1i.*2.*pi.*W20.*p.^2));
+    % Defocus
+    deltaW20 = W20 .* p .^2;
+    defocus = exp(1i .* 2 .* pi .* deltaW20);
+
+    % Pupil
+    pup = U .* apt .* defocus;
+
     psf = fftshift(fft2(pup)).*conj(fftshift(fft2(pup)));
     psf = psf ./ sum(psf(:));
     
@@ -78,7 +59,7 @@ for index = indices
     c = size(psf) ./ 2;  L = 25;
     box = psf(round(c(2))-L:round(c(2))+L,...
               round(c(1))-L:round(c(1))+L);
-    box = imresize(box, 5);
+    box = imresize(box, samp);
 
 
     %------------------------------------------------------------%
@@ -121,21 +102,21 @@ for index = indices
 
     % guess [normalization, xc, yc, sigma,
     %        normalization, xc, yc, sigma]
-    guess = [max(box(:)), xc1, yc1, 5, ...
-             max(box(:)), xc2, yc2, 5];
+    guess = [max(box(:)), xc1, yc1, 1*samp, ...
+             max(box(:)), xc2, yc2, 1*samp];
     LB = [max(box(:))/4, 1, 1, 0, ...
           max(box(:))/4, 1, 1, 0];        
-    UB = [max(box(:)), n, n, 25, ...
-          max(box(:)), n, n, 25];
+    UB = [max(box(:)), n, n, 5*samp, ...
+          max(box(:)), n, n, 5*samp];
 
     % Least square fit.
     params = lsqnonlin(@(P) objfun(P, X, Y, box), guess, LB, UB, options);
 
     % Shift the absolute co-ordinates.
-    coords1 = [c(1) + (boxC / 2 - params(2)) ./ 5, ...
-               c(2) + (boxC / 2 - params(3)) ./ 5];
-    coords2 = [c(1) + (boxC / 2 - params(6)) ./ 5, ...
-               c(2) + (boxC / 2 - params(7)) ./ 5];
+    coords1 = [c(1) + (boxC / 2 - params(2)) ./ samp, ...
+               c(2) + (boxC / 2 - params(3)) ./ samp];
+    coords2 = [c(1) + (boxC / 2 - params(6)) ./ samp, ...
+               c(2) + (boxC / 2 - params(7)) ./ samp];
 %     midpt = [params(2) + params(6), params(3) + params(7)] ./ 2;
 % 
 %     figure('units', 'normalized', 'position', [0 0 1 1]); 
@@ -150,7 +131,7 @@ for index = indices
     %------------------------------------------------------------%
     % [X, Y] is a vector pointing from one peak to another.
     %------------------------------------------------------------%    
-    par1 = (params(2) - params(6)) ./ 5, par2 = (params(3) - params(7)) ./ 5
+    par1 = (params(2) - params(6)) ./ samp, par2 = (params(3) - params(7)) ./ samp
     store1 = [store1; par1]; store2 = [store2; par2];
     
     midpt = [coords1(1) + coords2(1), coords1(2) + coords2(2)] ./ 2;
@@ -171,18 +152,14 @@ W20fit = fit(angles, W20range', 'linearinterp');
 
 % The psf is displaced slightly.
 correction = midpoints - NoPts / 2;
-shiftX = fit(W20range', correction(:, 1), 'linearinterp');
-shiftY = fit(W20range', correction(:, 2), 'linearinterp');
 
 % Given an angle map it maps them to defocus
 % polyval(yFit, x)
 angle2defocus = feval(W20fit, angles);
 
-save('./DHPSFdata/ang2defocus.mat', 'W20fit')
+save('./DHPSFdata/ang2defocus2.mat', 'W20fit')
 save('./DHPSFdata/angles.mat', 'angles');
 save('./DHPSFdata/templates.mat', 'PSFs');
-save('./DHPSFdata/shiftX.mat', 'shiftX');
-save('./DHPSFdata/shiftY.mat', 'shiftY');
 
 
 
@@ -190,9 +167,6 @@ figure; plot(angle2defocus, angles, 'r')
         hold on
         plot(W20range, angles, '*')
 
-figure; plot(W20range, correction(:, 1), '*')
-
-figure; plot(W20range, correction(:, 2), '*')
 end
 
 

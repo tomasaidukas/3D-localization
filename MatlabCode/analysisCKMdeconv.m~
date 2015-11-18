@@ -1,4 +1,5 @@
-function [defocusVals] = analysisCKMdeconv(img, img180, psf, psf180, camera, CKMfit, NOISE)
+function [defocusVals, breaker] = analysisCKMdeconv(img, img180, psf, ...
+                              psf180, camera, CKMfit, NOISE, randx, randy)
 %------------------------------------------------------------%
 % This method of obtaining the depth map uses two convolved images.
 % It deconvolves them with a certain PSF at a specific defocus
@@ -17,8 +18,7 @@ CC = double(FTimg .* conj(FTpsf));% .* H);
 cc = abs(ifftshift(ifft2(CC)));
 [ROW, COL] = find(max(cc(:)) == cc);
 C = [COL, ROW];
-figure; imshow(img, [])
-ho
+
 
 [W20, maxDefocus, NoPts, XYrange, R, f] = camera{:};
 defocusVals = [];
@@ -30,16 +30,14 @@ L = 10; samp = 10 ; thresh = 0;
 % Deconvolve
 decon = wienerCustom(img, psf, NOISE);
 decon180 = wienerCustom(img180, psf180, NOISE);
-figure; imshow(decon, [])
 % Extract the regions
-region = decon(C-L:C+L, C-L:C+L);
-region180 = decon180(C-L:C+L, C-L:C+L);
+region = decon(C(2)-L:C(2)+L, C(1)-L:C(1)+L);
+region180 = decon180(C(2)-L:C(2)+L, C(1)-L:C(1)+L);
 region = imresize(region, samp);
 region180 = imresize(region180, samp);
 region(region <= thresh) = 0;
 region180(region180 <= thresh) = 0;
 
-figure; imshow(region, [])
 %------------------------------------------------------------%
 % Fit a Gaussian using least squares.
 %------------------------------------------------------------%
@@ -59,6 +57,9 @@ params = lsqnonlin(@(P) objfun2(P, X, Y, region), ...
 params180 = lsqnonlin(@(P) objfun2(P, X, Y, region180), ...
                       guess180, LB180, UB180, options);
 
+% figure; imshowpair(region, region180)
+% hold on; plot(params(2), params(3), '*')
+% hold on; plot(params180(2), params180(3), '*')
 %------------------------------------------------------------%
 % Find the distance between the peaks.
 %------------------------------------------------------------%
@@ -74,5 +75,7 @@ dist = sqrt((shift(1) - shift180(1)) ^ 2 + ...
 %------------------------------------------------------------%
 defocus = feval(CKMfit, dist);
 defocusVals = [defocusVals, defocus];
+
+[imgCKM, mapCKM] = CKM(imgN, img180N, camera2, sigmaRange, NOISE);
 
 end

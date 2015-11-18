@@ -21,7 +21,7 @@ sigmaRange = 10:15;
 %------------------------------------------------------------%
 % Parameters used to generate the canvas for PSF storage
 %------------------------------------------------------------%
-W20 = 0:0.02:4; 
+W20 = 0:0.1:5; 
 maxDefocus = size(W20, 2);
 % Data used to simulate the PSF mesh
 NoPts = 870;
@@ -62,6 +62,8 @@ distLong = 3 * (8 * fnumber.^2 * lambda) % defocus in terms of waves
 
 camera = {W20; maxDefocus; NoPts; XYrange; R; f};
 
+deviation = 3;
+
 % simulateDHPSF(NoPts, XYrange, R, 0);
 % simulateDHPSF(NoPts, XYrange, R, deviation);
 % 
@@ -72,7 +74,7 @@ camera = {W20; maxDefocus; NoPts; XYrange; R; f};
 %------------------------------------------------------------%
 % Generates depth maps for CKM and DH-PSF.
 %------------------------------------------------------------%
-[PSFs, angles, W20fit] = DHPSFmap(camera);
+% [PSFs, angles, W20fit] = DHPSFmap(camera);
 % angles = load('./DHPSFdata/angles.mat'); angles = angles.angles;
 % PSFs = load('./DHPSFdata/templates.mat'); PSFs = PSFs.PSFs;
 % W20fit = load('./DHPSFdata/ang2defocus.mat'); angle2defocus = W20fit.W20fit;

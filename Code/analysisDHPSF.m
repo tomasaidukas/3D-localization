@@ -1,5 +1,5 @@
 function [X, Y, defocus] = analysisDHPSF(img, psf, ... 
-                                         angle2defocus, shiftsX, shiftsY)
+                                         angle2defocus)
 %------------------------------------------------------------%
 % DHPSF method as developed by Standford university people.
 % Locate peaks using correlation -> segment them out ->
@@ -21,10 +21,10 @@ cc = abs(ifftshift(ifft2(CC)));
 C = [COL, ROW];
 
 
-K = 25; NoPts = size(img, 2);
+K = 25; NoPts = size(img, 2); samp = 1;
 % Extract the region
 box = img(C(2)-K:C(2)+K, C(1)-K:C(1)+K);
-box = imresize(box, 5);
+box = imresize(box, samp);
 % Least square fitting routine for a double Gaussian
 % Arrays used for result storage
 peakCoords = [];
@@ -61,22 +61,22 @@ boxC = size(box, 1);
 
 % guess [normalization, xc, yc, sigma,
 %        normalization, xc, yc, sigma]
-guess = [max(box(:)), xc1, yc1, 5, ...
-         max(box(:)), xc2, yc2, 5];
+guess = [max(box(:)), xc1, yc1, 1*samp, ...
+         max(box(:)), xc2, yc2, 1*samp];
 LB = [max(box(:))/4, 1, 1, 0, ...
       max(box(:))/4, 1, 1, 0];
-UB = [max(box(:)), n, n, 5 * 5, ...
-      max(box(:)), n, n, 5 * 5];
+UB = [max(box(:)), n, n, 5 * samp, ...
+      max(box(:)), n, n, 5 * samp];
 
 % least square fit
 params = lsqnonlin(@(P) objfun(P, X, Y, box), guess, LB, UB, options);
 
 % Shift the absolute co-ordinates
-coords1 = [C(1) + (boxC / 2 - params(2)) ./ 5, ...
-           C(2) + (boxC / 2 - params(3)) ./ 5];
-coords2 = [C(1) + (boxC / 2 - params(6)) ./ 5, ...
-           C(2) + (boxC / 2 - params(7)) ./ 5] ;       
-       
+coords1 = [C(1) + (boxC / 2 - params(2)) ./ samp, ...
+           C(2) + (boxC / 2 - params(3)) ./ samp];
+coords2 = [C(1) + (boxC / 2 - params(6)) ./ samp, ...
+           C(2) + (boxC / 2 - params(7)) ./ samp] ;       
+%        
 % midpt = [params(2) + params(6), params(3) + params(7)] ./ 2;
 % figure; imshow(box, [])
 % hold on; plot(params(2), params(3), '*')
@@ -92,7 +92,7 @@ coords2 = [C(1) + (boxC / 2 - params(6)) ./ 5, ...
 % the angle they make with the horizontal axis to determine the
 % depth. The midpoint will be the localized co-ordinate in 2D.
 %------------------------------------------------------------%
-par1 = (params(2) - params(6)) ./ 5; par2 = (params(3) - params(7)) ./ 5;
+par1 = (params(2) - params(6)) ./ samp; par2 = (params(3) - params(7)) ./ samp;
 
 ang = atand(par2 / par1);
 
@@ -105,14 +105,8 @@ ang = atand(par2 / par1);
 %------------------------------------------------------------%
 defocus = feval(angle2defocus, ang);
 
-correctionX = feval(shiftsX, defocus);
-correctionY = feval(shiftsY, defocus);
-
 midpt = [coords1(1) + coords2(1), coords1(2) + coords2(2)] ./ 2;
 
-% WTF IS THIS DISPLACEMENT BY 4?????????? ??????????????????
 X = midpt(2); Y = midpt(1);
-%?????????????????????????????????????????????????? 4???????
-% X = midpt(2); Y = midpt(1);
 end
 

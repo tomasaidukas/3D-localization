@@ -1,8 +1,7 @@
-function [deviation] = defocus2waves(camera);
+function [deviation] = defocus2waves(R, f, XYrange, W20);
 %------------------------------------------------------------%
 % Longitudinal length shift in terms of waves
 %------------------------------------------------------------%
-[W20, maxDefocus, NoPts, XYrange, R, f] = camera{:};
 
 diameter = (R * 2);
 fnumber = f / diameter;

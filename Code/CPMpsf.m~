@@ -7,18 +7,19 @@ function [psf, psf180] = CPMpsf(XYrange, NoPts, R, str)
                  linspace(-XYrange, XYrange, NoPts));
 [tet, p] = cart2pol(X, Y);
 apt = double(p <= R);
-p = apt .* p;
+
 p = p ./ max(p(:));
 
 defocus = double(exp(1i .* 2 .* pi .* str .* p.^2));
 
 alpha = 4.0; % Peak aberration
+% CPM = double(exp(1i .* 2 .* pi .* alpha .* (X.^3 + Y.^3)));
 CPM = double(exp(1i .* 2 .* pi .* alpha .* (X.^3 + Y.^3)));
 
-% figure; imshow(p, [])
-% figure; imshow(CPM, [])
-% figure; imshow(CPM .* apt, [])
-% figure; imshow(apt, [])
+CPM = double(exp(1i .* 2 .* pi .* alpha .* (X.^3 + Y.^3)));
+figure; imshow(CPM, [])
+figure; imshow(CPM .* apt, [])
+figure; imshow(apt, [])
 
 pupilFunc = apt .* CPM .* defocus;
 pupilFunc180 = conj(pupilFunc);
